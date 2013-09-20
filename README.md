@@ -55,7 +55,61 @@ Pre-compiling binaries
     echo '5.3.6' > php/VERSION
     tar -zcvf php.tar.gz php
 
+	
+Getting binaries out of the ephemeral filesystem!
+-------------------------------------------------
 
+After you compile the binaries and bundle them into your .tar.gz files stored in the /app folder.
+
+WARNING: DO NOT log out of your 'heroku bash' shell-- doing so would return the files you just waited 20 minutes to compile back into the ephemeral-filesystem ether!
+
+Instead, run the following script to implement 's3-bash' in order to whisk those files out to Amazon S3 immediately.
+
+    #!/bin/bash
+    #
+    #--   UPLOAD YOUR BUILT .TAR.GZ ARCHIVES DIRECT TO S3 VIA BASH   --#
+    #--   after you https://github.com/heroku/heroku-buildpack-php   --#
+    #
+    set -uex
+
+    #-- configure amazon
+    AMAZON_KEY_ID="A12345WZ12345KL12345"
+    AMAZON_SECRET="a123457U12345+D12345aB12345tE12345RZ123P"
+    AMAZON_BUCKET_NAME="lorem-ipsum"
+
+    #-- function to put files
+    function put_file() {
+        local FILENAME="$1"
+        ./s3-put -k "$AMAZON_KEY_ID" -s secret -T "$FILENAME" "/$AMAZON_BUCKET_NAME/$FILENAME"
+    }
+
+    #-- go to folder
+    cd /app
+
+    #-- download and unpack s3-bash
+    curl -O https://s3-bash.googlecode.com/files/s3-bash.0.02.tar.gz
+    tar -xf s3-bash.0.02.tar.gz
+    chmod a+x s3-*
+
+    #-- store the secret
+    printf "$AMAZON_SECRET" > secret
+
+    #-- put the files
+    put_file apache-2.2.25.tar.gz
+    put_file php-5.3.27.tar.gz
+    put_file mcrypt-2.5.8.tar.gz
+
+    #-- the last step is making those three files public on AWS:
+    #
+    #  When complete, they will be publicly accessible, ala:
+    #
+    #  http://lorem-ipsum.s3.amazonaws.com/php-5.3.27.tar.gz
+    #  http://lorem-ipsum.s3.amazonaws.com/apache-2.2.25.tar.gz
+    #  http://lorem-ipsum.s3.amazonaws.com/mcrypt-2.5.8.tar.gz
+    #
+    #--
+
+	
 Hacking
 -------
 
